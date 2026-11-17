@@ -28,12 +28,7 @@ export class ShadowManager {
 
   bindEvents() {
     this.enabledToggle.addEventListener('click', () => {
-      this.enabled = !this.enabled
-      this.enabledToggle.setAttribute('aria-checked', String(this.enabled))
-      this.renderer.shadowMap.enabled = this.enabled
-      this.configureAllLights()
-      this.markShadowsDirty()
-      this.updateSummary()
+      this.setEnabled(!this.enabled)
     })
 
     this.qualityInput.addEventListener('change', () => {
@@ -65,6 +60,16 @@ export class ShadowManager {
     })
 
     document.addEventListener('shadowlab:lights-changed', this.onLightsChanged)
+  }
+
+  setEnabled(enabled) {
+    this.enabled = Boolean(enabled)
+    this.enabledToggle.setAttribute('aria-checked', String(this.enabled))
+    this.renderer.shadowMap.enabled = this.enabled
+    this.configureAllLights()
+    this.markShadowsDirty()
+    document.querySelector('#shadow-state').textContent = this.enabled ? 'ON' : 'OFF'
+    this.updateSummary()
   }
 
   onLightsChanged = () => {

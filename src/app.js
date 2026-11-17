@@ -3,6 +3,7 @@ import { createInitialScene } from './core/scene.js'
 import { LightManager } from './lights/lightManager.js'
 import { MaterialLab } from './materials/materialLab.js'
 import { ShadowManager } from './shadows/shadowManager.js'
+import { ShadowExperiments } from './experiments/shadowExperiments.js'
 import { ObjectEditor } from './ui/objectEditor.js'
 
 const app = document.querySelector('#app')
@@ -19,7 +20,7 @@ app.innerHTML = `
       <button class="module-tab" type="button" data-workspace="lighting">Lighting Studio</button>
       <button class="module-tab" type="button" data-workspace="shadows">Shadow Studio</button>
       <button class="module-tab" type="button" data-workspace="materials">Material Lab</button>
-      <button class="module-tab" type="button" disabled>Experiments</button>
+      <button class="module-tab" type="button" data-workspace="experiments">Experiments</button>
     </nav>
     <div class="project-state"><span class="state-dot"></span> SCENE READY</div>
   </header>
@@ -78,6 +79,60 @@ app.innerHTML = `
           </label>
         </section>
         <div class="panel-footer"><span>SHADOW MAP</span><span id="shadow-list-count">01 CASTERS</span></div>
+      </div>
+      <div id="experiment-mode-panel" hidden>
+        <div class="panel-rule"></div>
+        <div class="experiment-tabs" role="tablist" aria-label="Shadow experiments">
+          <button class="experiment-tab is-active" type="button" role="tab" aria-selected="true" data-experiment-tab="overlap">Overlapping</button>
+          <button class="experiment-tab" type="button" role="tab" aria-selected="false" data-experiment-tab="lights">Multiple lights</button>
+          <button class="experiment-tab" type="button" role="tab" aria-selected="false" data-experiment-tab="height">Light height</button>
+          <button class="experiment-tab" type="button" role="tab" aria-selected="false" data-experiment-tab="rotation">Object rotation</button>
+        </div>
+        <section class="experiment-card" role="tabpanel" data-experiment-panel="overlap">
+          <p class="eyebrow">STUDY 01 / SHADOW COMPOSITION</p>
+          <h2>Overlapping Shadows</h2>
+          <p>Add primitives, select one in the scene list, then drag its move gizmo or edit Position in the Inspector. Every object casts a real shadow onto the ground.</p>
+          <button class="experiment-reset" type="button" data-experiment-reset="overlap">Reset experiment</button>
+        </section>
+        <section class="experiment-card" role="tabpanel" data-experiment-panel="lights" hidden>
+          <p class="eyebrow">STUDY 02 / LIGHT RIG</p>
+          <h2>Multiple Light Sources</h2>
+          <p>Add point, directional or spot lights. Select a source to change its colour, intensity and position; toggle its shadow contribution in Shadow Studio.</p>
+          <button class="experiment-reset" type="button" data-experiment-reset="lights">Reset experiment</button>
+        </section>
+        <section class="experiment-card" role="tabpanel" data-experiment-panel="height" hidden>
+          <p class="eyebrow">STUDY 03 / LIGHT GEOMETRY</p>
+          <h2>Light Height vs Shadow Length</h2>
+          <label class="experiment-control" for="experiment-light-height">
+            <span>Spotlight height <output id="experiment-light-height-value">6.5</output></span>
+            <input id="experiment-light-height" type="range" min="3.5" max="10" step="0.1" value="6.5" />
+            <small>World-space units</small>
+          </label>
+          <p>With the light’s horizontal position fixed, lowering it toward an object lengthens the ground shadow. Raising it makes the shadow shorter.</p>
+          <button class="experiment-reset" type="button" data-experiment-reset="height">Reset experiment</button>
+        </section>
+        <section class="experiment-card" role="tabpanel" data-experiment-panel="rotation" hidden>
+          <p class="eyebrow">STUDY 04 / PROJECTED SHAPE</p>
+          <h2>Object Rotation vs Shadow</h2>
+          <label class="experiment-control" for="experiment-rotation-object">
+            <span>Object</span>
+            <select id="experiment-rotation-object"></select>
+          </label>
+          <label class="experiment-control" for="experiment-rotation-axis">
+            <span>Rotation axis</span>
+            <select id="experiment-rotation-axis">
+              <option value="x">X axis</option>
+              <option value="y" selected>Y axis</option>
+              <option value="z">Z axis</option>
+            </select>
+          </label>
+          <label class="experiment-control" for="experiment-rotation-angle">
+            <span>Angle <output id="experiment-rotation-angle-value">0°</output></span>
+            <input id="experiment-rotation-angle" type="range" min="0" max="360" step="1" value="0" />
+          </label>
+          <p>Rotate a primitive to see its projected silhouette change across the ground. The viewport gizmo and Inspector rotation fields remain available too.</p>
+          <button class="experiment-reset" type="button" data-experiment-reset="rotation">Reset experiment</button>
+        </section>
       </div>
     </aside>
 
@@ -225,14 +280,21 @@ app.innerHTML = `
             <span id="material-target-name">Object</span>
             <span class="object-type" id="material-target-type">BOX</span>
           </div>
+          <div class="material-active-summary" aria-live="polite">
+            <span>ACTIVE SHADING / MATERIAL</span>
+            <strong id="material-active-summary">SMOOTH / PLASTIC</strong>
+          </div>
           <section class="material-group" aria-labelledby="shading-heading">
             <div class="property-title"><span id="shading-heading">SHADING TECHNIQUE</span><span>ILLUMINATION</span></div>
-            <div class="material-techniques" role="group" aria-label="Shading technique">
-              <button type="button" data-shading-technique="flat" aria-pressed="false">Flat</button>
-              <button type="button" data-shading-technique="smooth" aria-pressed="true">Smooth</button>
-              <button type="button" data-shading-technique="gouraud" aria-pressed="false">Gouraud</button>
-              <button type="button" data-shading-technique="phong" aria-pressed="false">Phong</button>
-            </div>
+            <label class="material-type-control" for="shading-technique">
+              <span>Shading</span>
+              <select id="shading-technique">
+                <option value="flat">Flat</option>
+                <option value="smooth" selected>Smooth</option>
+                <option value="gouraud">Gouraud</option>
+                <option value="phong">Phong</option>
+              </select>
+            </label>
           </section>
           <label class="material-type-control" for="material-type">
             <span>Material</span>
@@ -291,9 +353,17 @@ try {
   const lightManager = new LightManager({ ...sceneBundle, initialLights: sceneBundle.initialLights })
   const shadowManager = new ShadowManager({ ...sceneBundle, lightManager })
   const materialLab = new MaterialLab({ ...sceneBundle, objectEditor, lightManager })
+  const shadowExperiments = new ShadowExperiments({
+    scene: sceneBundle.scene,
+    objectEditor,
+    lightManager,
+    shadowManager,
+    markShadowsDirty: sceneBundle.markShadowsDirty,
+  })
   const objectModePanel = document.querySelector('#object-mode-panel')
   const lightingModePanel = document.querySelector('#lighting-mode-panel')
   const shadowModePanel = document.querySelector('#shadow-mode-panel')
+  const experimentModePanel = document.querySelector('#experiment-mode-panel')
   const materialInspectorPanel = document.querySelector('#material-inspector-panel')
   const objectInspectorPanel = document.querySelector('#object-inspector-panel')
   const lightInspectorPanel = document.querySelector('#light-inspector-panel')
@@ -308,20 +378,23 @@ try {
       const isLighting = button.dataset.workspace === 'lighting'
       const isShadows = button.dataset.workspace === 'shadows'
       const isMaterials = button.dataset.workspace === 'materials'
+      const isExperiments = button.dataset.workspace === 'experiments'
+      if (!isExperiments) shadowExperiments.setActive(false)
       document.querySelectorAll('[data-workspace]').forEach((tab) => {
         const selected = tab === button
         tab.classList.toggle('is-active', selected)
         if (selected) tab.setAttribute('aria-current', 'page')
         else tab.removeAttribute('aria-current')
       })
-      document.querySelector('#sidebar-eyebrow').textContent = isLighting ? 'LIGHT RIG' : isShadows ? 'SHADOW LAB' : isMaterials ? 'MATERIAL TARGETS' : 'SCENE GRAPH'
-      document.querySelector('#sidebar-heading').textContent = isLighting ? 'Lights' : isShadows ? 'Shadows' : 'Objects'
-      document.querySelector('#inspector-heading').textContent = isLighting ? 'Light Properties' : isShadows ? 'Shadow Sources' : isMaterials ? 'Material Lab' : 'Inspector'
-      document.querySelector('.project-state').lastChild.textContent = isLighting ? ' LIGHTING STUDIO' : isShadows ? ' SHADOW STUDIO' : isMaterials ? ' MATERIAL LAB' : ' SCENE READY'
+      document.querySelector('#sidebar-eyebrow').textContent = isLighting ? 'LIGHT RIG' : isShadows ? 'SHADOW LAB' : isMaterials ? 'MATERIAL TARGETS' : isExperiments ? 'SHADOW LAB' : 'SCENE GRAPH'
+      document.querySelector('#sidebar-heading').textContent = isLighting ? 'Lights' : isShadows ? 'Shadows' : isExperiments ? 'Experiments' : 'Objects'
+      document.querySelector('#inspector-heading').textContent = isLighting ? 'Light Properties' : isShadows ? 'Shadow Sources' : isMaterials ? 'Material Lab' : isExperiments ? 'Experiment Guide' : 'Inspector'
+      document.querySelector('.project-state').lastChild.textContent = isLighting ? ' LIGHTING STUDIO' : isShadows ? ' SHADOW STUDIO' : isMaterials ? ' MATERIAL LAB' : isExperiments ? ' SHADOW EXPERIMENTS' : ' SCENE READY'
       objectModePanel.hidden = !(isObjects || isMaterials)
       objectModePanel.classList.toggle('material-target-mode', isMaterials)
       lightingModePanel.hidden = !isLighting
       shadowModePanel.hidden = !isShadows
+      experimentModePanel.hidden = !isExperiments
       objectInspectorPanel.hidden = !isObjects
       lightInspectorPanel.hidden = !isLighting
       shadowInspectorPanel.hidden = !isShadows
@@ -335,21 +408,26 @@ try {
       lightManager.setActive(isLighting)
       shadowManager.setActive(isShadows)
       materialLab.setActive(isMaterials)
+      shadowExperiments.setActive(isExperiments)
       sceneBundle.setCameraTargetHeight(isLighting ? 2.35 : 0.65)
       const activeCount = isLighting
         ? lightManager.records.length
         : isShadows
           ? lightManager.records.filter((record) => record.castShadow && record.enabled).length
-          : objectEditor.objectManager.records.length
+          : isExperiments
+            ? 4
+            : objectEditor.objectManager.records.length
       document.querySelector('#sidebar-count').textContent = String(activeCount).padStart(2, '0')
-      document.querySelector('#scene-status-label').textContent = isLighting ? 'LIGHTS' : isShadows ? 'SHADOWS' : isMaterials ? 'MATERIALS' : 'SCENE'
+      document.querySelector('#scene-status-label').textContent = isLighting ? 'LIGHTS' : isShadows ? 'SHADOWS' : isMaterials ? 'MATERIALS' : isExperiments ? 'EXPERIMENTS' : 'SCENE'
       document.querySelector('#scene-status-count').textContent = isLighting
         ? `${activeCount} SOURCES`
         : isShadows
           ? shadowManager.enabled ? `${activeCount} CASTERS` : 'OFF'
           : isMaterials
             ? `${activeCount} TARGETS`
-          : `${activeCount} OBJECTS`
+            : isExperiments
+              ? `${activeCount} STUDIES`
+              : `${activeCount} OBJECTS`
     })
   })
   document.querySelector('[data-workspace="objects"]').click()
