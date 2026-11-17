@@ -42,7 +42,8 @@ app.innerHTML = `
           <button type="button" data-add-object="cone">+ Cone</button>
           <button type="button" data-add-object="cylinder">+ Cylinder</button>
           <button type="button" data-add-object="pyramid">+ Pyramid</button>
-        </div>
+          <button type="button" data-add-object="butterfly">+ Butterfly</button>
+          </div>
         <div class="object-list" id="object-list" aria-label="Scene objects"></div>
         <div class="panel-footer"><span>SCENE CONTENTS</span><span id="object-count">00 ITEMS</span></div>
       </div>

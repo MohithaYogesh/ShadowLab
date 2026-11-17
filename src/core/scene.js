@@ -133,7 +133,25 @@ export function createInitialScene(container) {
     })
   }
 
-  renderer.setAnimationLoop(() => renderer.render(scene, camera))
+ 
+
+renderer.setAnimationLoop((time) => {
+  const elapsed = time * 0.001
+
+  scene.traverse((object) => {
+    if (!object.userData.isButterfly) return
+
+    const leftWing = object.getObjectByName('leftWing')
+    const rightWing = object.getObjectByName('rightWing')
+
+    const flap = Math.sin(elapsed * 8) * 0.65
+
+    if (leftWing) leftWing.rotation.x = flap
+    if (rightWing) rightWing.rotation.x = -flap
+  })
+
+  renderer.render(scene, camera)
+})
 
   return {
     scene,
